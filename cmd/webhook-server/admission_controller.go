@@ -24,7 +24,7 @@ import (
 	"log"
 	"net/http"
 
-	admission "k8s.io/api/admission/v1beta1"
+	admission "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -95,7 +95,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 		// to explicitly include the API version in the response.
 		// This API version needs to match the version from the request exactly, otherwise
 		// the API server will be unable to process the response.
-		// Note: a v1beta1 AdmissionReview is JSON-compatible with the v1 version, that's why
+		// Note: a v1 AdmissionReview is JSON-compatible with the v1 version, that's why
 		// we do not need to differentiate during unmarshaling or in the actual logic.
 		TypeMeta: admissionReviewReq.TypeMeta,
 		Response: &admission.AdmissionResponse{
