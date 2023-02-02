@@ -20,7 +20,7 @@ spec:
         runAsUser: 1234
       containers:
       - name: server
-        image: stackrox/admission-controller-webhook-demo:latest
+        image: isabel3000/webhook-demo:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8443
