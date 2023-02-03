@@ -42,6 +42,8 @@ kubectl -n webhook-demo create secret tls webhook-server-tls \
 ca_pem_b64="$(openssl base64 -A <"${keydir}/ca.crt")"
 sed -e 's@${CA_PEM_B64}@'"$ca_pem_b64"'@g' <"${basedir}/deployment.yaml.template" \
     | kubectl create -f -
+sed -e 's@${CA_PEM_B64}@'"$ca_pem_b64"'@g' <"${basedir}/webhook.yaml" \
+    | kubectl create -f -
 
 # Delete the key directory to prevent abuse (DO NOT USE THESE KEYS ANYWHERE ELSE).
 rm -rf "$keydir"
