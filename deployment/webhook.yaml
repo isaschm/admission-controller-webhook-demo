@@ -2,6 +2,8 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: demo-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: webhook-demo/webhook-cert
 webhooks:
   - name: webhook-server.webhook-demo.svc
     sideEffects: None
@@ -11,7 +13,6 @@ webhooks:
         name: webhook-server
         namespace: webhook-demo
         path: "/mutate"
-      caBundle: ${CA_PEM_B64}
     rules:
       - operations: [ "CREATE" ]
         apiGroups: [""]
