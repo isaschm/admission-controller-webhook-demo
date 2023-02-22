@@ -1,3 +1,26 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: webhook-cert-issuer
+  namespace: webhook-demo
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: webhook-cert
+  namespace: webhook-demo
+spec:
+  secretName: "webhook-server-tls"
+  dnsNames:
+  - "*.webhook-demo.svc.cluster.local"
+  - "*.webhook-demo.svc"
+  - "*.webhook-demo"
+  issuerRef:
+    name: webhook-cert-issuer
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,3 +68,24 @@ spec:
   ports:
     - port: 443
       targetPort: webhook-api
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: demo-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: webhook-demo/webhook-cert
+webhooks:
+- name: webhook-server.webhook-demo.svc
+  sideEffects: None
+  admissionReviewVersions: ["v1"]
+  clientConfig:
+    service:
+      name: webhook-server
+      namespace: webhook-demo
+      path: "/mutate"
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]

@@ -11,7 +11,7 @@ is applied, and the user ID defaults to `1234`.
 
 ## Prerequisites
 
-A cluster on which this example can be tested must be running Kubernetes 1.9.0 or above,
+A cluster on which this example can be tested must be running Kubernetes 1.24.0 or above,
 with the `admissionregistration.k8s.io/v1` API enabled. You can verify that by observing that the
 following command produces a non-empty output:
 ```
@@ -22,13 +22,29 @@ flag of `kube-apiserver`.
 
 For building the image, [GNU make](https://www.gnu.org/software/make/) and [Go](https://golang.org) are required.
 
+To issue and sign certificates, [cert-manager](https://cert-manager.io/) must be deployed to the cluster before the webhook. To deploy cert-manager, these steps can be followed:
+```
+kubectl create namespace cert-manager # cert-manager is the default namespace
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+```
+To verify the cert-manager api, run ```$cmctl check api```.
+
 ## Deploying the Webhook Server
 
 1. Bring up a Kubernetes cluster satisfying the above prerequisites, and make
 sure it is active (i.e., either via the configuration in the default location, or by setting
 the `KUBECONFIG` environment variable).
-2. Run `./deploy.sh`. This will create a CA, a certificate and private key for the webhook server,
-and deploy the resources in the newly created `webhook-demo` namespace in your Kubernetes cluster.
+2. Create the webhook namespace:
+
+```
+kubectl create namespace webhook-demo
+```
+
+3. Deploy all webhook resources:
+
+```
+kubectl apply -n webhook-demo -f deployment/deployment.yaml.template
+```
 
 
 ## Verify
@@ -42,7 +58,7 @@ webhook-server-6f976f7bf-hssc9   1/1       Running   0          35m
 
 2. A `MutatingWebhookConfiguration` named `demo-webhook` should exist:
 ```
-$ kubectl get mutatingwebhookconfigurations
+$ kubectl get mutatingwebhookconfigurations | grep demo-webhook
 NAME           AGE
 demo-webhook   36m
 ```
@@ -53,7 +69,7 @@ $ kubectl create -f examples/pod-with-defaults.yaml
 ```
 Verify that the pod has default values in its security context filled in:
 ```
-$ kubectl get pod/pod-with-defaults -o yaml
+$ kubectl get pod/pod-with-defaults -o yaml | grep securityContext -A 2
 ...
   securityContext:
     runAsNonRoot: true
@@ -70,7 +86,7 @@ I am running as user 1234
 `root` user:
 ```
 $ kubectl create -f examples/pod-with-override.yaml
-$ kubectl get pod/pod-with-override -o yaml
+$ kubectl get pod/pod-with-override -o yaml | grep securityContext -A 1
 ...
   securityContext:
     runAsNonRoot: false
