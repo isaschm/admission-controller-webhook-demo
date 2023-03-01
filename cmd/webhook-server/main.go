@@ -102,7 +102,10 @@ func main() {
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
+	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults)) // wird ausgeführt wenn /mutate
+	mux.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 	server := &http.Server{
 		// We listen on port 8443 such that we do not need root privileges or extra capabilities for this server.
 		// The Service object will take care of mapping this port to the HTTPS port 443.

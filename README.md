@@ -24,8 +24,8 @@ For building the image, [GNU make](https://www.gnu.org/software/make/) and [Go](
 
 To issue and sign certificates, [cert-manager](https://cert-manager.io/) must be deployed to the cluster before the webhook. To deploy cert-manager, these steps can be followed:
 ```
-kubectl create namespace cert-manager # cert-manager is the default namespace
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+$ kubectl create namespace cert-manager # cert-manager is the default namespace
+$ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
 ```
 To verify the cert-manager api, run ```$cmctl check api```.
 
@@ -37,13 +37,13 @@ the `KUBECONFIG` environment variable).
 2. Create the webhook namespace:
 
 ```
-kubectl create namespace webhook-demo
+$ kubectl create namespace webhook-demo
 ```
 
 3. Deploy all webhook resources:
 
 ```
-kubectl apply -n webhook-demo -f deployment/deployment.yaml.template
+$ kubectl apply -n webhook-demo -f deployment/deployment.yaml.template
 ```
 
 
