@@ -1,4 +1,4 @@
 FROM scratch
 
-COPY ./image/webhook-server /
+COPY ./webhook-server /
 ENTRYPOINT ["/webhook-server"]
