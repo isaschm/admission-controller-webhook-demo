@@ -29,7 +29,7 @@ jobs:
     - name: Build image and push to Docker Hub
       uses: docker/build-push-action@v4
       with:
-        context: .
+        context: ./image
         tags: isabel3000/webhook-demo:latest
         push: ${{ github.ref == 'refs/heads/main' }}
 
