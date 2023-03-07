@@ -102,7 +102,7 @@ func main() {
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults)) // wird ausgeführt wenn /mutate
+	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
 	mux.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

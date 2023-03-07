@@ -58,7 +58,7 @@ webhook-server-6f976f7bf-hssc9   1/1       Running   0          35m
 
 2. A `MutatingWebhookConfiguration` named `demo-webhook` should exist:
 ```
-$ kubectl get mutatingwebhookconfigurations | grep demo-webhook
+$ kubectl get mutatingwebhookconfigurations | grep webhook-server
 NAME           AGE
 demo-webhook   36m
 ```
