@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -26,6 +27,8 @@ import (
 	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -97,9 +100,32 @@ func applySecurityDefaults(req *admission.AdmissionRequest) ([]patchOperation, e
 	return patches, nil
 }
 
+func getNodeLocations() {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("Could not create cluster config: %v", err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Could not create clientset: %v", err.Error())
+	}
+
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatalf("Could not retrieve nodes: %v", err.Error())
+	}
+
+	for _, node := range nodes.Items {
+		log.Printf("%s\n", node.Name)
+	}
+}
+
 func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
+
+	getNodeLocations()
 
 	mux := http.NewServeMux()
 	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
