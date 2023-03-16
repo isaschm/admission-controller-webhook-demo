@@ -100,7 +100,7 @@ func applySecurityDefaults(req *admission.AdmissionRequest) ([]patchOperation, e
 	return patches, nil
 }
 
-func getNodeLocations() {
+func getNodeLocations() []string {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("Could not create cluster config: %v", err.Error())
@@ -116,16 +116,23 @@ func getNodeLocations() {
 		log.Fatalf("Could not retrieve nodes: %v", err.Error())
 	}
 
+	locationLabels := []string{"topology.gke.io/zone", "topology.kubernetes.io/region", "topology.kubernetes.io/zone"}
+	var locations []string
 	for _, node := range nodes.Items {
-		log.Printf("%s\n", node.Name)
+		for _, label := range locationLabels {
+			locations = append(locations, node.Labels[label])
+		}
 	}
+
+	log.Printf("%v\n", locations)
+	return locations
 }
 
 func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
-	getNodeLocations()
+	locations := getNodeLocations()
 
 	mux := http.NewServeMux()
 	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
