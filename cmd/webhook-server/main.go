@@ -24,6 +24,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"golang.org/x/exp/slices"
+
 	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,7 +122,9 @@ func getNodeLocations() []string {
 	var locations []string
 	for _, node := range nodes.Items {
 		for _, label := range locationLabels {
-			locations = append(locations, node.Labels[label])
+			if !slices.Contains(locations, node.Labels[label]) {
+				locations = append(locations, node.Labels[label])
+			}
 		}
 	}
 
@@ -132,7 +136,7 @@ func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
-	locations := getNodeLocations()
+	getNodeLocations()
 
 	mux := http.NewServeMux()
 	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
