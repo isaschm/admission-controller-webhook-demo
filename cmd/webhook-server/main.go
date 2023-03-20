@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,7 +42,7 @@ var (
 	podResource = metav1.GroupVersionResource{Version: "v1", Resource: "pods"}
 )
 
-// applySecurityDefaults implements the logic of our example admission controller webhook. For every pod that is created
+// applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
 // (outside of Kubernetes namespaces), it first checks if `runAsNonRoot` is set. If it is not, it is set to a default
 // value of `false`. Furthermore, if `runAsUser` is not set (and `runAsNonRoot` was not initially set), it defaults
 // `runAsUser` to a value of 1234.
@@ -52,7 +51,7 @@ var (
 // not conflict with the `runAsUser` setting - i.e., if the former is set to `true`, the latter must not be `0`.
 // Note that we combine both the setting of defaults and the check for potential conflicts in one webhook; ideally,
 // the latter would be performed in a validating webhook admission controller.
-func applySecurityDefaults(req *admission.AdmissionRequest) ([]patchOperation, error) {
+func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperation, error) {
 	// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
 	// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
 	// let the object request pass through otherwise.
@@ -68,35 +67,22 @@ func applySecurityDefaults(req *admission.AdmissionRequest) ([]patchOperation, e
 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
 	}
 
-	// Retrieve the `runAsNonRoot` and `runAsUser` values.
-	var runAsNonRoot *bool
-	var runAsUser *int64
-	if pod.Spec.SecurityContext != nil {
-		runAsNonRoot = pod.Spec.SecurityContext.RunAsNonRoot
-		runAsUser = pod.Spec.SecurityContext.RunAsUser
-	}
-
-	// Create patch operations to apply sensible defaults, if those options are not set explicitly.
+	// Create patch operations to add transparency information, if those labels are not set.
 	var patches []patchOperation
-	if runAsNonRoot == nil {
-		patches = append(patches, patchOperation{
-			Op:   "add",
-			Path: "/spec/securityContext/runAsNonRoot",
-			// The value must not be true if runAsUser is set to 0, as otherwise we would create a conflicting
-			// configuration ourselves.
-			Value: runAsUser == nil || *runAsUser != 0,
-		})
 
-		if runAsUser == nil {
+	// Retrieve Labels from Pod object
+	labels := pod.GetObjectMeta().GetLabels()
+	log.Printf("%+v", labels)
+
+	transparencyLabels := []string{"purposes", "legitimateInterest", "legalBasis", "personalData"}
+	for _, label := range transparencyLabels {
+		if _, ok := labels[label]; !ok {
 			patches = append(patches, patchOperation{
 				Op:    "add",
-				Path:  "/spec/securityContext/runAsUser",
-				Value: 1234,
+				Path:  fmt.Sprintf("metadata/labels/%s", label),
+				Value: "undefined",
 			})
 		}
-	} else if *runAsNonRoot == true && (runAsUser != nil && *runAsUser == 0) {
-		// Make sure that the settings are not contradictory, and fail the object creation if they are.
-		return nil, errors.New("runAsNonRoot specified, but runAsUser set to 0 (the root user)")
 	}
 
 	return patches, nil
@@ -139,7 +125,7 @@ func main() {
 	getNodeLocations()
 
 	mux := http.NewServeMux()
-	mux.Handle("/mutate", admitFuncHandler(applySecurityDefaults))
+	mux.Handle("/mutate", admitFuncHandler(applyTransparencyLabeling))
 	mux.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

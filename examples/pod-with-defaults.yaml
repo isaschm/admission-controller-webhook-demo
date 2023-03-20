@@ -10,6 +10,6 @@ metadata:
 spec:
   restartPolicy: OnFailure
   containers:
-    - name: busybox
-      image: busybox
-      command: ["sh", "-c", "echo I am running as user $(id -u)"]
+  - name: busybox
+    image: busybox
+    command: ["sh", "-c", "echo I am running as user $(id -u)"]
