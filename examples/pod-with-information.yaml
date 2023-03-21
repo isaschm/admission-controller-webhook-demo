@@ -7,6 +7,10 @@ metadata:
   name: pod-with-defaults
   labels:
     app: pod-with-defaults
+  annotations:
+    purposes: given
+    legitimateInterest: not present
+    legalBasis: Article 2
 spec:
   restartPolicy: OnFailure
   containers:

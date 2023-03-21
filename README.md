@@ -63,23 +63,19 @@ NAME           AGE
 demo-webhook   36m
 ```
 
-3. Deploy [a pod](examples/pod-with-defaults.yaml) that neither sets `runAsNonRoot` nor `runAsUser`:
+3. Deploy [a pod](examples/pod-with-information.yaml) that has all necessary transparency information:
 ```
-$ kubectl create -f examples/pod-with-defaults.yaml
+$ kubectl create -f examples/pod-with-information.yaml
 ```
-Verify that the pod has default values in its security context filled in:
+Verify that the pod has the transparency information in its annotations:
 ```
-$ kubectl get pod/pod-with-defaults -o yaml | grep securityContext -A 2
+$ kubectl get pod/pod-with-information -o yaml | grep annotations -A 3
 ...
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1234
+  annotations:
+    legalBasis: Article 2
+    legitimateInterest: not present
+    purposes: given
 ...
-```
-Also, check the logs that the pod had in fact been running as a non-root user:
-```
-$ kubectl logs pod-with-defaults
-I am running as user 1234
 ```
 
 4. Deploy [a pod](examples/pod-with-override.yaml) that explicitly sets `runAsNonRoot` to `false`, allowing it to run as the

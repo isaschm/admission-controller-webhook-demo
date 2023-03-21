@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -71,17 +72,13 @@ func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperatio
 	var patches []patchOperation
 
 	// Retrieve Labels from Pod object
-	labels := pod.GetObjectMeta().GetLabels()
+	labels := pod.GetObjectMeta().GetAnnotations()
 	log.Printf("%+v", labels)
 
-	transparencyLabels := []string{"purposes", "legitimateInterest", "legalBasis", "personalData"}
+	transparencyLabels := []string{"purposes", "legitimateInterest", "legalBasis"}
 	for _, label := range transparencyLabels {
 		if _, ok := labels[label]; !ok {
-			patches = append(patches, patchOperation{
-				Op:    "add",
-				Path:  fmt.Sprintf("metadata/labels/%s", label),
-				Value: "undefined",
-			})
+			return nil, errors.New("transparency information not specified")
 		}
 	}
 
