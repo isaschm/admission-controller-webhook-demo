@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,15 +42,13 @@ var (
 	podResource = metav1.GroupVersionResource{Version: "v1", Resource: "pods"}
 )
 
+var (
+	transparencyTags = []string{"purposes", "legitimateInterest", "legalBasis"}
+)
+
 // applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
-// (outside of Kubernetes namespaces), it first checks if `runAsNonRoot` is set. If it is not, it is set to a default
-// value of `false`. Furthermore, if `runAsUser` is not set (and `runAsNonRoot` was not initially set), it defaults
-// `runAsUser` to a value of 1234.
-//
-// To demonstrate how requests can be rejected, this webhook further validates that the `runAsNonRoot` setting does
-// not conflict with the `runAsUser` setting - i.e., if the former is set to `true`, the latter must not be `0`.
-// Note that we combine both the setting of defaults and the check for potential conflicts in one webhook; ideally,
-// the latter would be performed in a validating webhook admission controller.
+// (outside of Kubernetes namespaces), it checks whether the necessary transparency tags are set in
+// pod annotations. If not, it adds the tags with the value "unspecified"
 func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperation, error) {
 	// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
 	// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
@@ -71,15 +68,29 @@ func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperatio
 	// Create patch operations to add transparency information, if those labels are not set.
 	var patches []patchOperation
 
-	// Retrieve Labels from Pod object
-	labels := pod.GetObjectMeta().GetAnnotations()
-	log.Printf("%+v", labels)
+	// Retrieve Annotations from Pod object
+	annotations := pod.GetObjectMeta().GetAnnotations()
+	if annotations == nil {
+		patches = append(patches, patchOperation{
+			Op:    "add",
+			Path:  "/metadata",
+			Value: "{\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
+		})
+	} else if annotations != nil {
 
-	transparencyLabels := []string{"purposes", "legitimateInterest", "legalBasis"}
-	for _, label := range transparencyLabels {
-		if _, ok := labels[label]; !ok {
-			return nil, errors.New("transparency information not specified")
+		// Check if Transparency tags are present in the annotation, if not add them
+		for _, label := range transparencyTags {
+			if _, ok := annotations[label]; !ok {
+				annotations[label] = "unspecified"
+				log.Printf("Transparency tag %v added to annotations", label)
+			}
 		}
+
+		patches = append(patches, patchOperation{
+			Op:    "add",
+			Path:  "/metadata/annotations",
+			Value: annotations,
+		})
 	}
 
 	return patches, nil
