@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package admission
 
 import (
 	"encoding/json"
@@ -31,23 +31,23 @@ import (
 )
 
 const (
-	jsonContentType = `application/json`
+	JsonContentType = `application/json`
 )
 
 var (
-	universalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
+	UniversalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
 )
 
-// patchOperation is an operation of a JSON patch, see https://tools.ietf.org/html/rfc6902 .
-type patchOperation struct {
+// PatchOperation is an operation of a JSON patch, see https://tools.ietf.org/html/rfc6902 .
+type PatchOperation struct {
 	Op    string      `json:"op"`
 	Path  string      `json:"path"`
 	Value interface{} `json:"value,omitempty"`
 }
 
-// admitFunc is a callback for admission controller logic. Given an AdmissionRequest, it returns the sequence of patch
+// AdmitFunc is a callback for admission controller logic. Given an AdmissionRequest, it returns the sequence of patch
 // operations to be applied in case of success, or the error that will be shown when the operation is rejected.
-type admitFunc func(*admission.AdmissionRequest) ([]patchOperation, error)
+type AdmitFunc func(*admission.AdmissionRequest) ([]PatchOperation, error)
 
 // isKubeNamespace checks if the given namespace is a Kubernetes-owned namespace.
 func isKubeNamespace(ns string) bool {
@@ -57,7 +57,7 @@ func isKubeNamespace(ns string) bool {
 // doServeAdmitFunc parses the HTTP request for an admission controller webhook, and -- in case of a well-formed
 // request -- delegates the admission control logic to the given admitFunc. The response body is then returned as raw
 // bytes.
-func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) ([]byte, error) {
+func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) ([]byte, error) {
 	// Step 1: Request validation. Only handle POST requests with a body and json content type.
 
 	if r.Method != http.MethodPost {
@@ -71,16 +71,16 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 		return nil, fmt.Errorf("could not read request body: %v", err)
 	}
 
-	if contentType := r.Header.Get("Content-Type"); contentType != jsonContentType {
+	if contentType := r.Header.Get("Content-Type"); contentType != JsonContentType {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, fmt.Errorf("unsupported content type %s, only %s is supported", contentType, jsonContentType)
+		return nil, fmt.Errorf("unsupported content type %s, only %s is supported", contentType, JsonContentType)
 	}
 
 	// Step 2: Parse the AdmissionReview request.
 
 	var admissionReviewReq admission.AdmissionReview
 
-	if _, _, err := universalDeserializer.Decode(body, nil, &admissionReviewReq); err != nil {
+	if _, _, err := UniversalDeserializer.Decode(body, nil, &admissionReviewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, fmt.Errorf("could not deserialize request: %v", err)
 	} else if admissionReviewReq.Request == nil {
@@ -103,7 +103,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 		},
 	}
 
-	var patchOps []patchOperation
+	var patchOps []PatchOperation
 	// Apply the admit() function only for non-Kubernetes namespaces. For objects in Kubernetes namespaces, return
 	// an empty set of patch operations.
 	if !isKubeNamespace(admissionReviewReq.Request.Namespace) {
@@ -143,7 +143,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) (
 }
 
 // serveAdmitFunc is a wrapper around doServeAdmitFunc that adds error handling and logging.
-func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) {
+func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
 	log.Print("Handling webhook request ...")
 
 	var writeErr error
@@ -161,8 +161,8 @@ func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 	}
 }
 
-// admitFuncHandler takes an admitFunc and wraps it into a http.Handler by means of calling serveAdmitFunc.
-func admitFuncHandler(admit admitFunc) http.Handler {
+// AdmitFuncHandler takes an admitFunc and wraps it into a http.Handler by means of calling serveAdmitFunc.
+func AdmitFuncHandler(admit AdmitFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveAdmitFunc(w, r, admit)
 	})

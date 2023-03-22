@@ -27,6 +27,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
+	admissionController "github.com/isaschm/admission-controller-webhook-demo/internal/admission"
 	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,68 +49,127 @@ var (
 	transparencyTags = []string{"purposes", "legitimateInterest", "legalBasis"}
 )
 
-// applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
-// (outside of Kubernetes namespaces), it checks whether the necessary transparency tags are set in
-// pod annotations. If not, it adds the tags with the value "unspecified"
-func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperation, error) {
-	// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
-	// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
-	// let the object request pass through otherwise.
-	if req.Resource != podResource {
-		log.Printf("expect resource to be %s", podResource)
-		return nil, nil
-	}
-
-	// Parse the Pod object.
-	raw := req.Object.Raw
-	pod := corev1.Pod{}
-	if _, _, err := universalDeserializer.Decode(raw, nil, &pod); err != nil {
-		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
-	}
-
-	// Retrieve Labels from Pod object
-	labels := pod.GetLabels()
-	if labels["deployOutsideOfEU"] == "false" {
-		locations := getNodeLocations()
-
-		// blabla
-		if slices.ContainsFunc(locations, func(s string) bool {
-			return strings.HasPrefix(s, "europe-west1")
-		}) {
-			return nil, errors.New("resource cannot be deployed outside of EU")
+func applyTransparencyLabelerForLocations(locations []string) admissionController.AdmitFunc {
+	return func(req *admission.AdmissionRequest) ([]admissionController.PatchOperation, error) {
+		// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
+		// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
+		// let the object request pass through otherwise.
+		if req.Resource != podResource {
+			log.Printf("expect resource to be %s", podResource)
+			return nil, nil
 		}
-	}
 
-	// Create patch operations to add transparency information, if those labels are not set.
-	var patches []patchOperation
+		// Parse the Pod object.
+		raw := req.Object.Raw
+		pod := corev1.Pod{}
+		if _, _, err := admissionController.UniversalDeserializer.Decode(raw, nil, &pod); err != nil {
+			return nil, fmt.Errorf("could not deserialize pod object: %v", err)
+		}
 
-	// Retrieve Annotations from Pod object
-	annotations := pod.GetObjectMeta().GetAnnotations()
-	if annotations == nil {
-		patches = append(patches, patchOperation{
-			Op:    "add",
-			Path:  "/metadata",
-			Value: "{\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
-		})
-	} else if annotations != nil {
-
-		// Check if Transparency tags are present in the annotation, if not add them
-		for _, label := range transparencyTags {
-			if _, ok := annotations[label]; !ok {
-				annotations[label] = "unspecified"
-				log.Printf("Transparency tag %v added to annotations", label)
+		// Retrieve Labels from Pod object
+		labels := pod.GetLabels()
+		if labels["deployOutsideOfEU"] == "false" {
+			if slices.ContainsFunc(locations, func(s string) bool {
+				return strings.HasPrefix(s, "europe-west1")
+			}) {
+				return nil, errors.New("resource cannot be deployed outside of EU")
 			}
 		}
 
-		patches = append(patches, patchOperation{
-			Op:    "add",
-			Path:  "/metadata/annotations",
-			Value: annotations,
-		})
-	}
+		// Create patch operations to add transparency information, if those labels are not set.
+		var patches []admissionController.PatchOperation
 
-	return patches, nil
+		// Retrieve Annotations from Pod object
+		annotations := pod.GetObjectMeta().GetAnnotations()
+		if annotations == nil {
+			patches = append(patches, admissionController.PatchOperation{
+				Op:    "add",
+				Path:  "/metadata",
+				Value: "{\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
+			})
+		} else if annotations != nil {
+
+			// Check if Transparency tags are present in the annotation, if not add them
+			for _, label := range transparencyTags {
+				if _, ok := annotations[label]; !ok {
+					annotations[label] = "unspecified"
+					log.Printf("Transparency tag %v added to annotations", label)
+				}
+			}
+
+			patches = append(patches, admissionController.PatchOperation{
+				Op:    "add",
+				Path:  "/metadata/annotations",
+				Value: annotations,
+			})
+		}
+
+		return patches, nil
+	}
 }
+
+// // applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
+// // (outside of Kubernetes namespaces), it checks whether the necessary transparency tags are set in
+// // pod annotations. If not, it adds the tags with the value "unspecified"
+// func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperation, error) {
+// 	// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
+// 	// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
+// 	// let the object request pass through otherwise.
+// 	if req.Resource != podResource {
+// 		log.Printf("expect resource to be %s", podResource)
+// 		return nil, nil
+// 	}
+
+// 	// Parse the Pod object.
+// 	raw := req.Object.Raw
+// 	pod := corev1.Pod{}
+// 	if _, _, err := universalDeserializer.Decode(raw, nil, &pod); err != nil {
+// 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
+// 	}
+
+// 	// Retrieve Labels from Pod object
+// 	labels := pod.GetLabels()
+// 	if labels["deployOutsideOfEU"] == "false" {
+// 		locations := getNodeLocations()
+
+// 		// blabla
+// 		if slices.ContainsFunc(locations, func(s string) bool {
+// 			return strings.HasPrefix(s, "europe-west1")
+// 		}) {
+// 			return nil, errors.New("resource cannot be deployed outside of EU")
+// 		}
+// 	}
+
+// 	// Create patch operations to add transparency information, if those labels are not set.
+// 	var patches []patchOperation
+
+// 	// Retrieve Annotations from Pod object
+// 	annotations := pod.GetObjectMeta().GetAnnotations()
+// 	if annotations == nil {
+// 		patches = append(patches, patchOperation{
+// 			Op:    "add",
+// 			Path:  "/metadata",
+// 			Value: "{\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
+// 		})
+// 	} else if annotations != nil {
+
+// 		// Check if Transparency tags are present in the annotation, if not add them
+// 		for _, label := range transparencyTags {
+// 			if _, ok := annotations[label]; !ok {
+// 				annotations[label] = "unspecified"
+// 				log.Printf("Transparency tag %v added to annotations", label)
+// 			}
+// 		}
+
+// 		patches = append(patches, patchOperation{
+// 			Op:    "add",
+// 			Path:  "/metadata/annotations",
+// 			Value: annotations,
+// 		})
+// 	}
+
+// 	return patches, nil
+// }
 
 // Retrieves regions and zones of all nodes and returns locations as strings
 // without differentiating between zone and region.
@@ -147,8 +207,10 @@ func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
+	admitHandler := applyTransparencyLabelerForLocations(getNodeLocations())
+
 	mux := http.NewServeMux()
-	mux.Handle("/mutate", admitFuncHandler(applyTransparencyLabeling))
+	mux.Handle("/mutate", admissionController.AdmitFuncHandler(admitHandler))
 	mux.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
