@@ -10,14 +10,12 @@ metadata:
   name: pod-with-conflict
   labels:
     app: pod-with-conflict
+    deployOutsideOfEU: "false"
   annotations:
     purposes: given
     legitimateInterest: not present
 spec:
   restartPolicy: OnFailure
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 0
   containers:
   - name: busybox
     image: busybox

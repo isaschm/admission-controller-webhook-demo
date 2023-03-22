@@ -18,10 +18,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/exp/slices"
 
@@ -65,6 +67,19 @@ func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperatio
 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
 	}
 
+	// Retrieve Labels from Pod object
+	labels := pod.GetLabels()
+	if labels["deployOutsideOfEU"] == "false" {
+		locations := getNodeLocations()
+
+		// blabla
+		if slices.ContainsFunc(locations, func(s string) bool {
+			return strings.HasPrefix(s, "europe-west1")
+		}) {
+			return nil, errors.New("resource cannot be deployed outside of EU")
+		}
+	}
+
 	// Create patch operations to add transparency information, if those labels are not set.
 	var patches []patchOperation
 
@@ -96,6 +111,8 @@ func applyTransparencyLabeling(req *admission.AdmissionRequest) ([]patchOperatio
 	return patches, nil
 }
 
+// Retrieves regions and zones of all nodes and returns locations as strings
+// without differentiating between zone and region.
 func getNodeLocations() []string {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -129,8 +146,6 @@ func getNodeLocations() []string {
 func main() {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
-
-	getNodeLocations()
 
 	mux := http.NewServeMux()
 	mux.Handle("/mutate", admitFuncHandler(applyTransparencyLabeling))
