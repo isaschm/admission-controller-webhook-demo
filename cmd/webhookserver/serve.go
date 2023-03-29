@@ -52,7 +52,7 @@ var (
 	addEmptyAnnotationsOp = admissionController.PatchOperation{
 		Op:    "add",
 		Path:  "/metadata",
-		Value: "{\"annotations\": {}}",
+		Value: "\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
 	}
 )
 
@@ -107,11 +107,13 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 			return nil, err
 		}
 
-		patches = append(patches, admissionController.PatchOperation{
+		// The last operation is processed first, which means we need to prepend
+		// operations that depend on adding the annotations tag
+		patches = append([]admissionController.PatchOperation{admissionController.PatchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
 			Value: encodedTags,
-		})
+		}}, patches...)
 
 		return patches, nil
 	}

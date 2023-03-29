@@ -6,9 +6,6 @@ metadata:
   name: pod-with-override
   labels:
     app: pod-with-override
-  annotations:
-    purposes: given
-    legitimateInterest: not present
 spec:
   restartPolicy: OnFailure
   containers:

@@ -109,7 +109,6 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 	if !isKubeNamespace(admissionReviewReq.Request.Namespace) {
 		patchOps, err = admit(admissionReviewReq.Request)
 	}
-
 	if err != nil {
 		// If the handler returned an error, incorporate the error message into the response and deny the object
 		// creation.
