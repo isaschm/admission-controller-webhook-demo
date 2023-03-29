@@ -49,11 +49,7 @@ var (
 var (
 	transparencyTags = []string{"purposes", "legitimateInterest", "legalBasis"}
 
-	addEmptyAnnotationsOp = admissionController.PatchOperation{
-		Op:    "add",
-		Path:  "/metadata",
-		Value: "\"annotations\": {\"legalBasis\": \"unspecified\", \"legitimateInterest\": \"unspecified\", \"purposes\": \"unspecified\"}",
-	}
+	emptyAnnotations = map[string]string{"annotations": "{}"}
 )
 
 func applyTransparencyLabelerForLocations(locations []string) admissionController.AdmitFunc {
@@ -93,7 +89,20 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 		annotations := pod.GetObjectMeta().GetAnnotations()
 
 		if annotations == nil {
-			patches = append(patches, addEmptyAnnotationsOp)
+			config, err := rest.InClusterConfig()
+			if err != nil {
+				return nil, fmt.Errorf("could not create cluster config: %w", err)
+			}
+
+			clientset, err := kubernetes.NewForConfig(config)
+			if err != nil {
+				return nil, fmt.Errorf("could not create clientset: %w", err)
+			}
+
+			pod.SetAnnotations(emptyAnnotations)
+			if _, err = clientset.CoreV1().Pods("default").Update(context.TODO(), &pod, metav1.UpdateOptions{}); err != nil {
+				return patches, fmt.Errorf("add empty annotations to pod: %w", err)
+			}
 			annotations = make(map[string]string)
 		}
 
@@ -104,7 +113,7 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 
 		encodedTags, err := tags.Encode()
 		if err != nil {
-			return nil, err
+			return patches, fmt.Errorf("get tag map from tag struct: %w", err)
 		}
 
 		// The last operation is processed first, which means we need to prepend
