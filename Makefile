@@ -19,7 +19,7 @@
 IMAGE ?= isabel3000/webhook-demo:latest
 
 image/webhook-server:
-	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o webhook-server .
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o image/webhook-server .
 
 .PHONY: docker-image
 docker-image: image/webhook-server

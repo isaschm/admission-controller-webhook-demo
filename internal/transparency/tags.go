@@ -48,7 +48,6 @@ func (t *Tags) Encode() (map[string]string, error) {
 	encoded := make(map[string]string)
 	data, err := json.Marshal(tag)
 	if err != nil {
-		fmt.Print("hallo ich bin hier")
 		return nil, fmt.Errorf("encoding tag struct to map: %w", err)
 	}
 	json.Unmarshal(data, &encoded)
