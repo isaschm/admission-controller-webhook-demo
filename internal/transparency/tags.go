@@ -1,6 +1,7 @@
 package transparency
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
@@ -12,7 +13,7 @@ const (
 
 type Tags struct {
 	Purposes           string `mapstructure:"purposes"`
-	LegitimateInterest string `mapstructure:"purposes"`
+	LegitimateInterest string `mapstructure:"legitimateInterest"`
 	LegalBasis         string `mapstructure:"legalBasis"`
 }
 
@@ -45,9 +46,12 @@ func (t *Tags) Encode() (map[string]string, error) {
 	}
 
 	encoded := make(map[string]string)
-	if err := mapstructure.Decode(tag, encoded); err != nil {
+	data, err := json.Marshal(tag)
+	if err != nil {
+		fmt.Print("hallo ich bin hier")
 		return nil, fmt.Errorf("encoding tag struct to map: %w", err)
 	}
+	json.Unmarshal(data, &encoded)
 
 	return encoded, nil
 }
