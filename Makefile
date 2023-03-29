@@ -18,8 +18,8 @@
 
 IMAGE ?= isabel3000/webhook-demo:latest
 
-image/webhook-server: $(shell find . -name '*.go')
-	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o $@ .
+image/webhook-server:
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o webhook-server .
 
 .PHONY: docker-image
 docker-image: image/webhook-server

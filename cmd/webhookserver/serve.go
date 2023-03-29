@@ -169,7 +169,7 @@ func ExecuteServe() error {
 		// We listen on port 8443 such that we do not need root privileges or extra capabilities for this server.
 		// The Service object will take care of mapping this port to the HTTPS port 443.
 		Addr:    ":8443",
-		Handler: mux,
+		Handler: withLogging(log.Default())(mux),
 	}
 
 	if err := server.ListenAndServeTLS(certPath, keyPath); err != nil {
@@ -177,4 +177,13 @@ func ExecuteServe() error {
 	}
 
 	return nil
+}
+
+func withLogging(logger *log.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger.Println(r.Method, r.URL.Path, r.RemoteAddr, r.UserAgent())
+			next.ServeHTTP(w, r)
+		})
+	}
 }
