@@ -1,58 +1,19 @@
 package transparency
 
-import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/mitchellh/mapstructure"
-)
-
 const (
 	UnspecifiedTag = "unspecified"
 )
 
-type Tags struct {
-	Purposes           string `mapstructure:"purposes"`
-	LegitimateInterest string `mapstructure:"legitimateInterest"`
-	LegalBasis         string `mapstructure:"legalBasis"`
-}
+var (
+	transparencyTags = []string{"purposes", "dataCategories"}
+)
 
-func DecodeTags(m map[string]string) (*Tags, error) {
-	for _, key := range m {
-		if m[key] == UnspecifiedTag {
-			m[key] = ""
+func DecodeTags(m map[string]string) (map[string]string, error) {
+	for _, tag := range transparencyTags {
+		if m[tag] == "" {
+			m[tag] = UnspecifiedTag
 		}
 	}
 
-	tags := new(Tags)
-	if err := mapstructure.Decode(m, tags); err != nil {
-		return nil, fmt.Errorf("decoding map to Tags: %w", err)
-	}
-
-	return tags, nil
-}
-
-func (t *Tags) Encode() (map[string]string, error) {
-	tag := *t
-
-	if tag.Purposes == "" {
-		tag.Purposes = UnspecifiedTag
-	}
-	if tag.LegitimateInterest == "" {
-		tag.LegitimateInterest = UnspecifiedTag
-	}
-	if tag.LegalBasis == "" {
-		tag.LegalBasis = UnspecifiedTag
-	}
-
-	encoded := make(map[string]string)
-	data, err := json.Marshal(tag)
-	if err != nil {
-		return nil, fmt.Errorf("encoding tag struct to bytes: %w", err)
-	}
-	if err := json.Unmarshal(data, &encoded); err != nil {
-		return nil, fmt.Errorf("encoding bytes to map: %w", err)
-	}
-
-	return encoded, nil
+	return m, nil
 }

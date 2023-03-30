@@ -47,8 +47,6 @@ var (
 )
 
 var (
-	transparencyTags = []string{"purposes", "legitimateInterest", "legalBasis"}
-
 	emptyAnnotations = map[string]string{"annotations": "{}"}
 )
 
@@ -76,7 +74,7 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 		labels := pod.GetLabels()
 		if labels["deployOutsideOfEU"] == "false" {
 			if slices.ContainsFunc(locations, func(s string) bool {
-				return strings.HasPrefix(s, "europe-west1")
+				return strings.HasPrefix(s, "europe-west2")
 			}) {
 				return nil, errors.New("resource cannot be deployed outside of EU")
 			}
@@ -111,17 +109,12 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 			return patches, fmt.Errorf("get tags from annotations: %w", err)
 		}
 
-		encodedTags, err := tags.Encode()
-		if err != nil {
-			return patches, fmt.Errorf("get tag map from tag struct: %w", err)
-		}
-
 		// The last operation is processed first, which means we need to prepend
 		// operations that depend on adding the annotations tag
 		patches = append([]admissionController.PatchOperation{admissionController.PatchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
-			Value: encodedTags,
+			Value: tags,
 		}}, patches...)
 
 		return patches, nil
