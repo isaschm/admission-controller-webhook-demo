@@ -18,14 +18,10 @@ package webhookserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
-	"strings"
-
-	"golang.org/x/exp/slices"
 
 	admissionController "github.com/isaschm/admission-controller-webhook-demo/internal/admission"
 	"github.com/isaschm/admission-controller-webhook-demo/internal/transparency"
@@ -73,10 +69,8 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 		// Retrieve Labels from Pod object
 		labels := pod.GetLabels()
 		if labels["deployOutsideOfEU"] == "false" {
-			if slices.ContainsFunc(locations, func(s string) bool {
-				return strings.HasPrefix(s, "europe-west2")
-			}) {
-				return nil, errors.New("resource cannot be deployed outside of EU")
+			if err := transparency.ProcessLocation(labels, locations); err != nil {
+				return nil, fmt.Errorf("processing location: %w", err)
 			}
 		}
 
@@ -121,43 +115,11 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 	}
 }
 
-// Retrieves regions and zones of all nodes and returns locations as strings
-// without differentiating between zone and region.
-func getNodeLocations() ([]string, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("could not create cluster config: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("could not create clientset: %w", err)
-	}
-
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve nodes: %w", err)
-	}
-
-	locationLabels := []string{"topology.gke.io/zone", "topology.kubernetes.io/region", "topology.kubernetes.io/zone"}
-	var locations []string
-	for _, node := range nodes.Items {
-		for _, label := range locationLabels {
-			if !slices.Contains(locations, node.Labels[label]) {
-				locations = append(locations, node.Labels[label])
-			}
-		}
-	}
-
-	log.Printf("%v\n", locations)
-	return locations, nil
-}
-
 func ExecuteServe() error {
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
-	locations, err := getNodeLocations()
+	locations, err := admissionController.GetNodeLocations()
 	if err != nil {
 		return fmt.Errorf("fetch node locations: %w", err)
 	}
