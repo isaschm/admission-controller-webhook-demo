@@ -7,8 +7,7 @@ metadata:
     app: pod-with-information
   annotations:
     purposes: given
-    legitimateInterest: not present
-    legalBasis: Article 2
+    dataCategories: given
 spec:
   restartPolicy: OnFailure
   containers:

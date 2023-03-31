@@ -1,7 +1,7 @@
-# Kubernetes Admission Controller Webhook Demo
+# Privacy-aware Kubernetes Admission Controller Webhook
 
 This repository contains a small HTTP server that can be used as a Kubernetes
-[MutatingAdmissionWebhook](https://kubernetes.io/docs/admin/admission-controllers/#mutatingadmissionwebhook-beta-in-19).
+[MutatingAdmissionWebhook](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/).
 
 ## Prerequisites
 
@@ -65,21 +65,35 @@ Verify that the pod has the transparency information in its annotations:
 $ kubectl get pod/pod-with-information -o yaml | grep annotations -A 3
 ...
   annotations:
-    legalBasis: Article 2
-    legitimateInterest: not present
     purposes: given
+    dataCategories: given
 ...
 ```
 
-4. Deploy [a pod](examples/pod-with-override.yaml) that has some the transparency tags but is missing `legalBasis`:
+4. Deploy [a pod](examples/pod-with-override.yaml) that has some the transparency tags but is missing `dataCategories`:
 ```
 $ kubectl create -f examples/pod-with-override.yaml
 $ kubectl get pod/pod-with-override -o yaml | grep annotations -A 3
 ...
   annotations:
-    legalBasis: unspecified
-    legitimateInterest: not present
     purposes: given
+    dataCategories: unspecified
+...
+```
+
+5. Deploy [a pod](examples/pod-with-conflict.yaml) which disallows deployment outside of the Eu.
+This only applies to GKE clusters.
+```
+$ kubectl create -f examples/pod-with-conflict.yaml
+```
+If the cluster is running in zones outside of the EU, the deployment will be rejected
+and return an error. If not, the deployment will pass and can be verified with:
+```
+$ kubectl get pod/pod-with-conflict -o yaml | grep annotations -A 3
+...
+  annotations:
+    purposes: given
+    dataCategories: unspecified
 ...
 ```
 

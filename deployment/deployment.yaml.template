@@ -89,3 +89,33 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+ name: webhook-server-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["update"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: webhook-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: webhook-server-binding
+subjects:
+- kind: ServiceAccount
+  name: webhook-server
+  namespace: webhook-demo
+roleRef:
+  kind: ClusterRole
+  name: webhook-server-cluster-role
+  apiGroup: rbac.authorization.k8s.io

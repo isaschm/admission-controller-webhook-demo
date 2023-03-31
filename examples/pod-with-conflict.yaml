@@ -13,7 +13,6 @@ metadata:
     deployOutsideOfEU: "false"
   annotations:
     purposes: given
-    legitimateInterest: not present
 spec:
   restartPolicy: OnFailure
   containers:
