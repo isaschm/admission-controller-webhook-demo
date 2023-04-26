@@ -51,7 +51,7 @@ type AdmitFunc func(*admission.AdmissionRequest) ([]PatchOperation, error)
 
 // isKubeNamespace checks if the given namespace is a Kubernetes-owned namespace.
 func isKubeNamespace(ns string) bool {
-	return ns == metav1.NamespacePublic || ns == metav1.NamespaceSystem
+	return ns == metav1.NamespacePublic || ns == metav1.NamespaceSystem || ns == "cert-manager"
 }
 
 // doServeAdmitFunc parses the HTTP request for an admission controller webhook, and -- in case of a well-formed
@@ -112,7 +112,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 	if err != nil {
 		// If the handler returned an error, incorporate the error message into the response and deny the object
 		// creation.
-		log.Println("Deployment rejected: %w", err.Error())
+		log.Println("Deployment rejected:", err.Error())
 		admissionReviewResponse.Response.Allowed = false
 		admissionReviewResponse.Response.Result = &metav1.Status{
 			Message: err.Error(),
