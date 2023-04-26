@@ -17,7 +17,6 @@ limitations under the License.
 package webhookserver
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,8 +27,6 @@ import (
 	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 const (
@@ -43,10 +40,10 @@ var (
 )
 
 var (
-	emptyAnnotations = map[string]string{"annotations": "{}"}
+	emptyAnnotations = map[string]string{"dataDisclosed": "unspecified"}
 )
 
-func applyTransparencyLabelerForLocations(locations []string) admissionController.AdmitFunc {
+func applyTransparencyLabeler(locations []string) admissionController.AdmitFunc {
 	// applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
 	// (outside of Kubernetes namespaces), it checks whether the necessary transparency tags are set in
 	// pod annotations. If not, it adds the tags with the value "unspecified"
@@ -81,37 +78,28 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 		annotations := pod.GetObjectMeta().GetAnnotations()
 
 		if annotations == nil {
-			config, err := rest.InClusterConfig()
+			patches = append(patches, admissionController.PatchOperation{
+				Op:    "add",
+				Path:  "/metadata/annotations",
+				Value: emptyAnnotations,
+			})
+
+			return patches, nil
+		} else {
+
+			tags, err := transparency.DecodeTags(annotations)
 			if err != nil {
-				return nil, fmt.Errorf("create cluster config: %w", err)
+				return patches, fmt.Errorf("get tags from annotations: %w", err)
 			}
 
-			clientset, err := kubernetes.NewForConfig(config)
-			if err != nil {
-				return nil, fmt.Errorf("create clientset: %w", err)
-			}
+			patches = append(patches, admissionController.PatchOperation{
+				Op:    "add",
+				Path:  "/metadata/annotations",
+				Value: tags,
+			})
 
-			pod.SetAnnotations(emptyAnnotations)
-			if _, err = clientset.CoreV1().Pods("default").Update(context.TODO(), &pod, metav1.UpdateOptions{}); err != nil {
-				return patches, fmt.Errorf("add empty annotations to pod: %w", err)
-			}
-			annotations = make(map[string]string)
+			return patches, nil
 		}
-
-		tags, err := transparency.DecodeTags(annotations)
-		if err != nil {
-			return patches, fmt.Errorf("get tags from annotations: %w", err)
-		}
-
-		// The last operation is processed first, which means we need to prepend
-		// operations that depend on adding the annotations tag
-		patches = append([]admissionController.PatchOperation{admissionController.PatchOperation{
-			Op:    "add",
-			Path:  "/metadata/annotations",
-			Value: tags,
-		}}, patches...)
-
-		return patches, nil
 	}
 }
 
@@ -124,7 +112,7 @@ func ExecuteServe() error {
 		return fmt.Errorf("fetch node locations: %w", err)
 	}
 
-	admitHandler := applyTransparencyLabelerForLocations(locations)
+	admitHandler := applyTransparencyLabeler(locations)
 
 	mux := http.NewServeMux()
 	mux.Handle("/mutate", admissionController.AdmitFuncHandler(admitHandler))
