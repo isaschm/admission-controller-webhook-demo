@@ -5,7 +5,7 @@ const (
 )
 
 var (
-	transparencyTags = []string{"purposes", "dataCategories"}
+	transparencyTags = []string{"dataDisclosed"}
 )
 
 func DecodeTags(m map[string]string) (map[string]string, error) {

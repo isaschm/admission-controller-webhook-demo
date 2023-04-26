@@ -112,6 +112,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 	if err != nil {
 		// If the handler returned an error, incorporate the error message into the response and deny the object
 		// creation.
+		log.Println("Deployment rejected: %w", err.Error())
 		admissionReviewResponse.Response.Allowed = false
 		admissionReviewResponse.Response.Result = &metav1.Status{
 			Message: err.Error(),

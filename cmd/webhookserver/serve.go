@@ -83,12 +83,12 @@ func applyTransparencyLabelerForLocations(locations []string) admissionControlle
 		if annotations == nil {
 			config, err := rest.InClusterConfig()
 			if err != nil {
-				return nil, fmt.Errorf("could not create cluster config: %w", err)
+				return nil, fmt.Errorf("create cluster config: %w", err)
 			}
 
 			clientset, err := kubernetes.NewForConfig(config)
 			if err != nil {
-				return nil, fmt.Errorf("could not create clientset: %w", err)
+				return nil, fmt.Errorf("create clientset: %w", err)
 			}
 
 			pod.SetAnnotations(emptyAnnotations)
