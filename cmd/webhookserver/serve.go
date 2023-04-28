@@ -17,6 +17,7 @@ limitations under the License.
 package webhookserver
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,6 +25,12 @@ import (
 
 	admissionController "github.com/isaschm/admission-controller-webhook-demo/internal/admission"
 	"github.com/isaschm/admission-controller-webhook-demo/internal/transparency"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	admission "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +54,8 @@ func applyTransparencyLabeler(locations []string) admissionController.AdmitFunc 
 	// applyTransparencyLabeling implements the logic of our example admission controller webhook. For every pod that is created
 	// (outside of Kubernetes namespaces), it checks whether the necessary transparency tags are set in
 	// pod annotations. If not, it adds the tags with the value "unspecified"
-	return func(req *admission.AdmissionRequest) ([]admissionController.PatchOperation, error) {
+	return func(ctx context.Context, req *admission.AdmissionRequest) ([]admissionController.PatchOperation, error) {
+
 		// This handler should only get called on Pod objects as per the MutatingWebhookConfiguration in the YAML file.
 		// However, if (for whatever reason) this gets invoked on an object of a different kind, issue a log message but
 		// let the object request pass through otherwise.
@@ -104,10 +112,27 @@ func applyTransparencyLabeler(locations []string) admissionController.AdmitFunc 
 }
 
 func ExecuteServe() error {
+	ctx := context.Background()
+	otelClient := otlptracehttp.NewClient()
+	exporter, err := otlptrace.New(ctx, otelClient)
+	if err != nil {
+		return fmt.Errorf("create otel tracer: %w", err)
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceName("admission-webhook-demo"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	defer tp.Shutdown(ctx)
+
 	certPath := filepath.Join(tlsDir, tlsCertFile)
 	keyPath := filepath.Join(tlsDir, tlsKeyFile)
 
-	locations, err := admissionController.GetNodeLocations()
+	locations, err := admissionController.GetNodeLocations(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch node locations: %w", err)
 	}

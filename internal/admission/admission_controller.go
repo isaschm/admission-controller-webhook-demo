@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"log"
 	"net/http"
 
+	"go.opentelemetry.io/otel"
 	admission "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,6 +40,10 @@ var (
 	UniversalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
 )
 
+var (
+	tracer = otel.Tracer("github.com/isaschm/admission-controller-webhook-demo/iternal/admission")
+)
+
 // PatchOperation is an operation of a JSON patch, see https://tools.ietf.org/html/rfc6902 .
 type PatchOperation struct {
 	Op    string      `json:"op"`
@@ -47,7 +53,7 @@ type PatchOperation struct {
 
 // AdmitFunc is a callback for admission controller logic. Given an AdmissionRequest, it returns the sequence of patch
 // operations to be applied in case of success, or the error that will be shown when the operation is rejected.
-type AdmitFunc func(*admission.AdmissionRequest) ([]PatchOperation, error)
+type AdmitFunc func(context.Context, *admission.AdmissionRequest) ([]PatchOperation, error)
 
 // isKubeNamespace checks if the given namespace is a Kubernetes-owned namespace.
 func isKubeNamespace(ns string) bool {
@@ -58,6 +64,8 @@ func isKubeNamespace(ns string) bool {
 // request -- delegates the admission control logic to the given admitFunc. The response body is then returned as raw
 // bytes.
 func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) ([]byte, error) {
+	ctx, span := tracer.Start(r.Context(), "doServeAdmitFunc")
+	defer span.End()
 	// Step 1: Request validation. Only handle POST requests with a body and json content type.
 
 	if r.Method != http.MethodPost {
@@ -107,7 +115,7 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 	// Apply the admit() function only for non-Kubernetes namespaces. For objects in Kubernetes namespaces, return
 	// an empty set of patch operations.
 	if !isKubeNamespace(admissionReviewReq.Request.Namespace) {
-		patchOps, err = admit(admissionReviewReq.Request)
+		patchOps, err = admit(ctx, admissionReviewReq.Request)
 	}
 	if err != nil {
 		// If the handler returned an error, incorporate the error message into the response and deny the object
@@ -144,6 +152,9 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 
 // serveAdmitFunc is a wrapper around doServeAdmitFunc that adds error handling and logging.
 func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
+	ctx, span := tracer.Start(r.Context(), "serveAdmitFunc")
+	r = r.WithContext(ctx)
+	defer span.End()
 	log.Print("Handling webhook request ...")
 
 	var writeErr error

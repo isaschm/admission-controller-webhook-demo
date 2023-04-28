@@ -16,7 +16,7 @@ var (
 
 // Retrieves regions and zones of all nodes and returns locations as strings
 // without differentiating between zone and region.
-func GetNodeLocations() ([]string, error) {
+func GetNodeLocations(ctx context.Context) ([]string, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not create cluster config: %w", err)
@@ -27,7 +27,7 @@ func GetNodeLocations() ([]string, error) {
 		return nil, fmt.Errorf("could not create clientset: %w", err)
 	}
 
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve nodes: %w", err)
 	}
