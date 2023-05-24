@@ -81,7 +81,7 @@ $ kubectl get pod/pod-with-override -o yaml | grep annotations -A 3
 ...
 ```
 
-5. Deploy [a pod](examples/pod-with-conflict.yaml) which disallows deployment outside of the Eu.
+5. Deploy [a pod](examples/pod-with-conflict.yaml) which disallows deployment outside of the EU.
 This only applies to GKE clusters.
 ```
 $ kubectl create -f examples/pod-with-conflict.yaml

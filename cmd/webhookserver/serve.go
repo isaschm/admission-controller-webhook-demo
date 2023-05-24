@@ -47,7 +47,11 @@ var (
 )
 
 var (
-	emptyAnnotations = map[string]string{"dataDisclosed": "unspecified"}
+	emptyAnnotations = map[string]string{
+		"dataCategories": "unspecified",
+		"necessity":      "unspecified",
+		"autoDecision":   "unspecified",
+	}
 )
 
 func applyTransparencyLabeler(locations []string) admissionController.AdmitFunc {
