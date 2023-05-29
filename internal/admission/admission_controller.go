@@ -96,6 +96,8 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 		return nil, errors.New("malformed admission review: request is nil")
 	}
 
+	log.Printf("%+v\n", admissionReviewReq.String())
+
 	// Step 3: Construct the AdmissionReview response.
 
 	admissionReviewResponse := admission.AdmissionReview{
@@ -141,6 +143,8 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 		admissionReviewResponse.Response.PatchType = new(admission.PatchType)
 		*admissionReviewResponse.Response.PatchType = admission.PatchTypeJSONPatch
 	}
+
+	log.Printf("%+v\n", admissionReviewResponse.String())
 
 	// Return the AdmissionReview with a response as JSON.
 	bytes, err := json.Marshal(&admissionReviewResponse)

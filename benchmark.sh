@@ -2,15 +2,18 @@
 
 servicePrefixes=("accountingservice" "adservice" "cartservice" "checkoutservice" "currencyservice" "emailservice" "featureflagservice" "frauddetectionservice" "paymentservice" "productcatalogservice" "quoteservice" "recommendationservice" "shippingservice")
 
-# # Loop over service prefix
-for s in "${servicePrefixes[@]}"; do
-  echo "Deleting service $s"
-  # Find service for prefix
-  name=$(kubectl get pods | grep ^"my-otel-demo-$s" | awk '{print $1}')
+end=$((SECONDS+600))
 
-  # Delete service
-  kubectl delete pod "$name"
+while [ $SECONDS -lt $end ]; do
+  # Loop over service prefixes
+  for s in "${servicePrefixes[@]}"; do
+    echo "Deleting service $s"
+    # Find service for prefix
+    name=$(kubectl get pods | grep ^"my-otel-demo-$s" | awk '{print $1}')
 
-  sleep 10
+    # Delete service
+    kubectl delete pod "$name"
+
+    sleep 10
+  done
 done
-
