@@ -7,7 +7,7 @@ metadata:
   labels:
     app: pod-with-override
   annotations:
-    purposes: given
+    dataCategories: ""
 spec:
   restartPolicy: OnFailure
   containers:

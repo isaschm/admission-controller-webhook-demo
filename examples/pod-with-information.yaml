@@ -6,8 +6,9 @@ metadata:
   labels:
     app: pod-with-information
   annotations:
-    purposes: given
-    dataCategories: given
+    autoDecision: "false"
+    necessity: "Meeting pre - contractual and contractual obligations to users without which they cannot use the service"
+    dataCategories: "[{\"name\":\"name\",\"purpose\":\"Mandatory information to send packages\",\"legalBasis\":\"SGB-100-42\",\"storage\":\"Until closing of account\"},{\"name\":\"address\",\"purpose\":\"Mandatory information to send packages\",\"legalBasis\":\"SGB-100-42\",\"storage\":\"Until closing of account\"}]"
 spec:
   restartPolicy: OnFailure
   containers:

@@ -11,8 +11,6 @@ metadata:
   labels:
     app: pod-with-conflict
     deployOutsideOfEU: "false"
-  annotations:
-    purposes: given
 spec:
   restartPolicy: OnFailure
   containers:
