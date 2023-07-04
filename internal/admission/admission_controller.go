@@ -96,8 +96,6 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 		return nil, errors.New("malformed admission review: request is nil")
 	}
 
-	log.Printf("%+v\n", admissionReviewReq.String())
-
 	// Step 3: Construct the AdmissionReview response.
 
 	admissionReviewResponse := admission.AdmissionReview{
@@ -144,8 +142,6 @@ func doServeAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) (
 		*admissionReviewResponse.Response.PatchType = admission.PatchTypeJSONPatch
 	}
 
-	log.Printf("%+v\n", admissionReviewResponse.String())
-
 	// Return the AdmissionReview with a response as JSON.
 	bytes, err := json.Marshal(&admissionReviewResponse)
 	if err != nil {
@@ -167,7 +163,6 @@ func serveAdmitFunc(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, writeErr = w.Write([]byte(err.Error()))
 	} else {
-		log.Print("Webhook request handled successfully")
 		_, writeErr = w.Write(bytes)
 	}
 
