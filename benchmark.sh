@@ -13,7 +13,5 @@ while [ $SECONDS -lt $end ]; do
 
     # Delete service
     kubectl delete pod "$name"
-
-    sleep 10
   done
 done
